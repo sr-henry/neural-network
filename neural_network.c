@@ -2,146 +2,51 @@
 #include <stdlib.h> 
 #include <time.h>
 #include <math.h>
+#include "matrix.h"
 
-typedef struct matrix {
-    double **data;
-    int rows;
-    int columns;
-}Matrix;
+#define get_lenght(x) (sizeof(x)/sizeof(x[0]))
 
+typedef struct nn {
+    Matrix inputs;
+    Matrix weights_ih;
+    Matrix hidden;
+    Matrix weights_ho;
+    Matrix output;
+    double learn_rate;
+}NeuralNetwork;
 
-    Matrix create_matrix(int rows, int columns);
-    Matrix multiply_matrix(Matrix A, Matrix B);
-    Matrix multiply_matrix_scalar(Matrix A, double escalar);
-    Matrix multiply_matrix_hadamard(Matrix A, Matrix B);
-    Matrix sum_matrix(Matrix A, Matrix B);
-    Matrix subtract_matrix(Matrix A, Matrix B);
-    void randomize_matrix(Matrix *A);
-    void print_matrix(Matrix A);
-
+    NeuralNetwork create_NN(int i_nodes, int h_nodes, int o_nodes);
 
 int main()
 {
+    int i_nodes = 2;
+    int h_nodes = 3;
+    int o_nodes = 2;
+
+    NeuralNetwork nn = create_NN(i_nodes, h_nodes, o_nodes);
+
+    puts("NeuralNetwork Structure");
+    printf("input: %d\nhidden: %d\noutput: %d\n\n", i_nodes, h_nodes, o_nodes);
+
+    puts("weights [input_layer -> hidden_layer]");
+    print_matrix(nn.weights_ih);
+
+    puts("\nweights [hidden_layer -> output_layer]");
+    print_matrix(nn.weights_ho);
 
     return 0;
 }
 
-Matrix create_matrix(int rows, int columns) {
-    Matrix matrix;
+NeuralNetwork create_NN(int i_nodes, int h_nodes, int o_nodes) {
+    NeuralNetwork nn;
 
-    int i, j;
+    nn.learn_rate = 0.1;
 
-    matrix.rows = rows;
-    matrix.columns = columns;
+    nn.weights_ih = create_matrix(h_nodes, i_nodes);
+    randomize_matrix(&nn.weights_ih);
 
-    matrix.data = (double **)malloc(rows * sizeof(double*));
-    for (i = 0; i < rows; i++) {
-        matrix.data[i] = (double *)malloc(columns * sizeof(double));
-        for (j = 0; j < columns; j++) {
-            matrix.data[i][j] = 0.0;
-        }
-    }
-    
-    return matrix;
-}
+    nn.weights_ho = create_matrix(o_nodes, h_nodes);
+    randomize_matrix(&nn.weights_ho);
 
-Matrix multiply_matrix(Matrix A, Matrix B) {
-    Matrix C = create_matrix(A.rows, B.columns);
-    
-    int i, j, k;
-
-    for (i = 0; i < C.rows; i++) {
-        for (j = 0; j < C.columns; j++) {
-            C.data[i][j] = 0.0;
-            for (k = 0; k < B.rows; k++) {
-                C.data[i][j] += A.data[i][k] * B.data[k][j];
-            }
-        }
-    }
-
-    return C;
-}
-
-Matrix multiply_matrix_scalar(Matrix A, double escalar) {
-    Matrix C = create_matrix(A.rows, A.columns);
-
-    int i, j;
-    for (i = 0; i < A.rows; i++) {
-        for (j = 0; j < A.columns; j++) {
-            C.data[i][j] = C.data[i][j] * escalar;
-        }
-    }
-
-    return C;
-}
-
-Matrix transpose_matrix(Matrix A) {
-    Matrix T = create_matrix(A.columns, A.lines);
-
-    int i, j;
-    for (i = 0; i < T.rows; i++) {
-        for (j = 0; j < T.columns; j++) {
-            T.data[i][j] = A.data[j][i]; 
-        }
-    }
-
-    return T;
-}
-
-Matrix multiply_matrix_hadamard(Matrix A, Matrix B) {
-    Matrix C = create_matrix(A.rows, A.columns);
-
-    int i, j;
-    for (i = 0; i < A.rows; i++) {
-        for (j = 0; j < A.columns; j++) {
-            C.data[i][j] = A.data[i][j] * B.data[i][j];
-        }
-    }
-
-    return C;
-}
-
-Matrix sum_matrix(Matrix A, Matrix B) {
-    Matrix C = create_matrix(A.rows, A.columns);
-
-    int i, j;
-    for (i = 0; i < A.rows; i++) {
-        for (j = 0; j < A.columns; j++) {
-            C.data[i][j] = A.data[i][j] + B.data[i][j];
-        }
-    }
-
-    return C;
-}
-
-Matrix subtract_matrix(Matrix A, Matrix B) {
-    Matrix C = create_matrix(A.rows, A.columns);
-
-    int i, j;
-    for (i = 0; i < A.rows; i++) {
-        for (j = 0; j < A.columns; j++) {
-            C.data[i][j] = A.data[i][j] - B.data[i][j];
-        }
-    }
-
-    return C;
-}
-
-void randomize_matrix(Matrix *A) {
-    int i, j;
-    for (i = 0; i < A->rows; i++) {
-        for (j = 0; j < A->columns; j++) {
-            A->data[i][j] = ((double)rand()/(double)(RAND_MAX)) * 5.0;
-        }
-    }
-}
-
-void print_matrix(Matrix A) {
-    int i, j;
-    for (i = 0; i < A.rows; i++) {
-        for (j = 0; j < A.columns; j++) {
-            printf("%lf  ", A.data[i][j]);
-        }
-        printf("\n");
-    }
+    return nn;
 }
