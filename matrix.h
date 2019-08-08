@@ -111,7 +111,7 @@ void randomize_matrix(Matrix *A) {
     }
 }
 
-Matrix array_2_matrix(double inputs[], int lenght) {
+Matrix array_2_matrix(double *inputs, int lenght) {
     Matrix matrix = create_matrix(lenght, 1);
     int i;
     for (i = 0; i < matrix.rows; i++) {
