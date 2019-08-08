@@ -6,47 +6,135 @@
 
 #define get_lenght(x) (sizeof(x)/sizeof(x[0]))
 
+typedef struct layer {
+    Matrix layer_data;
+    Matrix weights;
+}Layer;
+
+
 typedef struct nn {
-    Matrix inputs;
-    Matrix weights_ih;
-    Matrix hidden;
-    Matrix weights_ho;
-    Matrix output;
+    Layer input;
+    Layer *hidden;
+    Layer output;
+    int h_layers;
     double learn_rate;
 }NeuralNetwork;
 
-    NeuralNetwork create_NN(int i_nodes, int h_nodes, int o_nodes);
+    void print_neuralnetwork(NeuralNetwork *nn);
+    NeuralNetwork *create_NN(int i_nodes, int h_nodes, int h_layers, int o_nodes);
+    void set_input_layer(NeuralNetwork *nn, double *arr);
+    void feedforward(NeuralNetwork *nn);
+    double sigmoid(double x);
+    double dsigmoid(double x);
+    void activation(Matrix *matrix);
 
-int main()
-{
-    int i_nodes = 2;
-    int h_nodes = 3;
-    int o_nodes = 2;
+int main() {
 
-    NeuralNetwork nn = create_NN(i_nodes, h_nodes, o_nodes);
+    srand(time(0));
 
-    puts("NeuralNetwork Structure");
-    printf("input: %d\nhidden: %d\noutput: %d\n\n", i_nodes, h_nodes, o_nodes);
+    double input_array[] = {1, 2, 3, 4};
 
-    puts("weights [input_layer -> hidden_layer]");
-    print_matrix(nn.weights_ih);
+    NeuralNetwork *nn = create_NN(3, 4, 3, 2);
+    
+    set_input_layer(nn, input_array);
 
-    puts("\nweights [hidden_layer -> output_layer]");
-    print_matrix(nn.weights_ho);
+    //print_neuralnetwork(nn);
+    
+    feedforward(nn);
 
     return 0;
 }
 
-NeuralNetwork create_NN(int i_nodes, int h_nodes, int o_nodes) {
-    NeuralNetwork nn;
+void feedforward(NeuralNetwork *nn) {
+    int i;
+    
+    // INPUT -> HIDDEN[0]
+    nn->hidden[0].layer_data = multiply_matrix(nn->input.weights, nn->input.layer_data);
+    activation(&nn->hidden[0].layer_data);
 
-    nn.learn_rate = 0.1;
+    printf("\nhidden_output[0]\n");
+    print_matrix(nn->hidden[0].layer_data);
 
-    nn.weights_ih = create_matrix(h_nodes, i_nodes);
-    randomize_matrix(&nn.weights_ih);
+    // HIDDEN[i] -> HIDDEN[i - 1]
+    for (i = 1; i < nn->h_layers; i++) {
+        nn->hidden[i].layer_data = multiply_matrix(nn->hidden[i - 1].weights, nn->hidden[i - 1].layer_data);
+        activation(&nn->hidden[i].layer_data);
+        printf("\nhidden_output[%d]\n", i);
+        print_matrix(nn->hidden[i].layer_data);
+    }
 
-    nn.weights_ho = create_matrix(o_nodes, h_nodes);
-    randomize_matrix(&nn.weights_ho);
+    // LAST_HIDDEN -> OUTPUT
+    nn->output.layer_data = multiply_matrix(nn->hidden[i - 1].weights, nn->hidden[i - 1].layer_data);
+    activation(&nn->output.layer_data);
+    printf("\noutput\n");
+    print_matrix(nn->output.layer_data);
+
+}
+
+void activation(Matrix *matrix) {
+    int i, j;
+    for (i = 0; i < matrix->rows; i++) {
+        for (j = 0; j < matrix->columns; j++) {
+            matrix->data[i][j] = sigmoid(matrix->data[i][j]);
+        }
+    }
+}
+
+void set_input_layer(NeuralNetwork *nn, double *arr) {
+    int i, j;
+    for (i = 0; i < nn->input.layer_data.rows; i++) {
+        for (j = 0; j < nn->input.layer_data.columns; j++) {
+            nn->input.layer_data.data[i][j] = arr[i];
+        }
+    }
+}
+
+NeuralNetwork *create_NN(int h_layers, int i_nodes, int h_nodes, int o_nodes) {
+    NeuralNetwork *nn = (NeuralNetwork *)malloc(sizeof(NeuralNetwork));
+    
+    nn->h_layers = h_layers;
+
+    nn->input.layer_data = create_matrix(i_nodes, 1);
+    nn->input.weights = create_matrix(h_nodes, i_nodes);
+    randomize_matrix(&nn->input.weights);
+    
+    nn->hidden = (Layer *)malloc(h_layers * sizeof(Layer));
+
+    int i;
+    for (i = 0; i < h_layers; i++) {
+        if (i == h_layers-1) {
+            nn->hidden[i].weights = create_matrix(o_nodes, h_nodes);
+        } else {
+            nn->hidden[i].weights = create_matrix(h_nodes, h_nodes);
+        }
+        randomize_matrix(&nn->hidden[i].weights);
+    }
 
     return nn;
+}
+
+void print_neuralnetwork(NeuralNetwork *nn) {
+    printf("Input Layer:\n");
+    print_matrix(nn->input.layer_data);
+    
+    int i;
+    for (i = 0; i < nn->h_layers; i++) {
+        printf("\nHidden Layer[%d] weights\n", i);
+        print_matrix(nn->hidden[i].weights);
+    }
+}
+
+double sigmoid(double x) {
+     double exp_value;
+     double return_value;
+
+     exp_value = exp((double) -x);
+
+     return_value = 1 / (1 + exp_value);
+
+     return return_value;
+}
+
+double dsigmoid(double x) {
+    return x * (1 - x);
 }

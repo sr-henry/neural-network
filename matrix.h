@@ -41,17 +41,13 @@ Matrix multiply_matrix(Matrix A, Matrix B) {
     return C;
 }
 
-Matrix multiply_matrix_scalar(Matrix A, double escalar) {
-    Matrix C = create_matrix(A.rows, A.columns);
-
+void multiply_matrix_scalar(Matrix *A, double escalar) {
     int i, j;
-    for (i = 0; i < A.rows; i++) {
-        for (j = 0; j < A.columns; j++) {
-            C.data[i][j] = C.data[i][j] * escalar;
+    for (i = 0; i < A->rows; i++) {
+        for (j = 0; j < A->columns; j++) {
+            A->data[i][j] = A->data[i][j] * escalar;
         }
     }
-
-    return C;
 }
 
 Matrix transpose_matrix(Matrix A) {
