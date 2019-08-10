@@ -34,105 +34,98 @@ int main() {
 
     srand(time(0));
 
-    double input_array[] = {1, 2, 3, 4};
-    double target_array[] = {3, 7};
+    double input_array[4][2] = {{1, 1}, {1, 0}, {0, 1}, {0, 0}};
+    double target_array[4][1] = {{0}, {1}, {1}, {0}};
 
-    NeuralNetwork *nn = create_NN(5, 4, 3, 2);
+    NeuralNetwork *nn = create_NN(2, 2, 4, 1);
+
+    int i, index;
+    for (i = 0; i < 100000; i++) {
+        index = rand()%4;
+
+        printf("%lf : %lf\t%lf\t", input_array[index][0], input_array[index][1], target_array[index][0]);
+
+        set_input_layer(nn, input_array[index]);
+        feedforward(nn);
+        backpropagation(nn, target_array[index]);
+
+        print_matrix(nn->output.layer_data);
+        
+    }
     
-    set_input_layer(nn, input_array);
-
-    //print_neuralnetwork(nn);
-    
-    feedforward(nn);
-
-    backpropagation(nn, target_array);
-
-    feedforward(nn);
-
     return 0;
 }
 
 void backpropagation(NeuralNetwork *nn, double *target) {
-    int last = nn->h_layers-1;
 
-    // dW = erro (*) d(output) * lr * Hidden_T
-    Matrix target_matrix = array_2_matrix(target, nn->output.layer_data.rows);
-    
-    // OUTPUT -> LAST_HIDDEN
-    Matrix error = subtract_matrix(target_matrix, nn->output.layer_data);
-    Matrix d_output = derivate(nn->output.layer_data);
-    Matrix last_hidden_T = transpose_matrix(nn->hidden[last].layer_data);
-    Matrix gradient = multiply_matrix_hadamard(error, d_output);
+    int index = nn->h_layers - 1;
+
+    // dW = erro (*) d(output_right) * lr * left_layer_T
+    Matrix target_output = array_2_matrix(target, nn->output.layer_data.rows);
+
+    // Calculate OutputError
+    Matrix output_errors = subtract_matrix(target_output, nn->output.layer_data);
+
+    /*OUTPUT_LAYER -> LAST_HIDDEN */
+    Matrix d_outputs = derivate(nn->output.layer_data);
+    Matrix hidden_T = transpose_matrix(nn->hidden[index].layer_data);
+    Matrix gradient = multiply_matrix_hadamard(output_errors, d_outputs);
     multiply_matrix_scalar(&gradient, nn->learn_rate);
-    Matrix dW = multiply_matrix(gradient, last_hidden_T);
-    nn->hidden[last].weights = sum_matrix(nn->hidden[last].weights, dW);
+    Matrix delta_w = multiply_matrix(gradient, hidden_T);
+    nn->hidden[index].weights = sum_matrix(nn->hidden[index].weights, delta_w);
     
-    printf("\n[%d]\n", last);
-    print_matrix(nn->hidden[last].weights);
-
+    /*LAST_HIDDEN -> FIRST_HIDDEN */
     int i;
-    for (i = last - 1; i >= 0; i--) {
-        printf("\n[%d]\n", i);
-        print_matrix(nn->hidden[i].weights);
-
+    for (i = (index - 1); i >= 0; i--) {
         Matrix weights_T = transpose_matrix(nn->hidden[i].weights);
-        error = multiply_matrix(weights_T, error);
-        Matrix d_hidden = derivate(nn->hidden[i].layer_data);
-        Matrix back_hidden_T = transpose_matrix(nn->hidden[i].layer_data);
-        Matrix gradient_H = multiply_matrix_hadamard(error, d_hidden);
-        multiply_matrix_scalar(&gradient_H, nn->learn_rate);
-        Matrix dWH = multiply_matrix(gradient_H, back_hidden_T);
-
-        nn->hidden[i].weights = sum_matrix(nn->hidden[i].weights, dWH);
-
-        printf("\n");
-        print_matrix(nn->hidden[i].weights);
+        Matrix hidden_error = multiply_matrix(weights_T, output_errors);
+        d_outputs = derivate(nn->hidden[i + 1].layer_data);
+        hidden_T = transpose_matrix(nn->hidden[i].layer_data);
+        gradient = multiply_matrix_hadamard(hidden_error, d_outputs);
+        multiply_matrix_scalar(&gradient, nn->learn_rate);
+        delta_w = multiply_matrix(gradient, hidden_T);
+        nn->hidden[i].weights = sum_matrix(nn->hidden[i].weights, delta_w);
     }
 
     i++;
 
-    printf("\n[INPUTS]\n");
-    print_matrix(nn->input.weights);
-
+    /*FIRST_HIDDEN -> INPUT_LAYER */
     Matrix weights_T = transpose_matrix(nn->hidden[i].weights);
-    error = multiply_matrix(weights_T, error);
-    Matrix d_hidden = derivate(nn->hidden[i].layer_data);
-    Matrix input_T = transpose_matrix(nn->input.layer_data);
-    Matrix gradient_H = multiply_matrix_hadamard(error, d_hidden);
-    multiply_matrix_scalar(&gradient_H, nn->learn_rate);
-    Matrix dWH = multiply_matrix(gradient_H, input_T);
-    nn->input.weights = sum_matrix(nn->input.weights, dWH);
+    Matrix input_error = multiply_matrix(weights_T, output_errors);
+    d_outputs = derivate(nn->hidden[i].layer_data);
+    Matrix inputs_T = transpose_matrix(nn->input.layer_data);
+    gradient = multiply_matrix_hadamard(input_error, d_outputs);
+    multiply_matrix_scalar(&gradient, nn->learn_rate);
+    delta_w = multiply_matrix(gradient, inputs_T);
+    nn->input.weights = sum_matrix(nn->input.weights, delta_w);
 
-    printf("\n");
-    print_matrix(nn->input.weights);
 }
 
 void feedforward(NeuralNetwork *nn) {
     int i;
 
-    printf("\ninput\n");
-    print_matrix(nn->input.layer_data);
+    //printf("\ninput\n");
+    //print_matrix(nn->input.layer_data);
 
     // INPUT -> HIDDEN[0]
     nn->hidden[0].layer_data = multiply_matrix(nn->input.weights, nn->input.layer_data);
     activation(&nn->hidden[0].layer_data);
 
-    printf("\nhidden_output[0]\n");
-    print_matrix(nn->hidden[0].layer_data);
+    //printf("\nhidden_output[0]\n");
+    //print_matrix(nn->hidden[0].layer_data);
 
     // HIDDEN[i] -> HIDDEN[i - 1]
     for (i = 1; i < nn->h_layers; i++) {
         nn->hidden[i].layer_data = multiply_matrix(nn->hidden[i - 1].weights, nn->hidden[i - 1].layer_data);
         activation(&nn->hidden[i].layer_data);
-        printf("\nhidden_output[%d]\n", i);
-        print_matrix(nn->hidden[i].layer_data);
+        //printf("\nhidden_output[%d]\n", i);
+        //print_matrix(nn->hidden[i].layer_data);
     }
 
     // LAST_HIDDEN -> OUTPUT
     nn->output.layer_data = multiply_matrix(nn->hidden[i - 1].weights, nn->hidden[i - 1].layer_data);
     activation(&nn->output.layer_data);
-    printf("\noutput\n");
-    print_matrix(nn->output.layer_data);
+    //printf("\noutput\n");
 
 }
 
